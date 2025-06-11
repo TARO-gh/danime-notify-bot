@@ -1,0 +1,13 @@
+version: '3'
+services:
+  danime:
+    restart: unless-stopped
+    build: .
+    env_file:
+      - .env
+    container_name: 'danime'
+    working_dir: '/root/'
+    tty: true
+    volumes:
+      - ./:/root
+      - ./opt:/root/opt

@@ -1,0 +1,4 @@
+.env
+chromedriver
+opt/save_info.json
+**/__pycache__/

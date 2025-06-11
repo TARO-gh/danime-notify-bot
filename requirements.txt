@@ -1,0 +1,12 @@
+# Discord Bot 本体
+py-cord
+
+# 環境変数読み込み
+python-dotenv
+
+# スクレイピング
+beautifulsoup4
+requests
+
+# ブラウザ操作（Selenium）
+selenium>=4.9.0
