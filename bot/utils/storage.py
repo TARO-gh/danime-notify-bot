@@ -40,6 +40,11 @@ async def add_to_watchlist(ctx, work_id: int):
     # 初期情報取得（fetch_initial_dataは scraper.py で定義）
     from bot.utils.scraper import fetch_initial_data
     info = await fetch_initial_data(work_id)
+    if not info:
+        await ctx.send(embed=Embed(
+            title="アニメタイトルの追加に失敗しました。", color=0xff4500
+        ), delete_after=60)
+        return
     save_data.append(info)
     _save_json('save_info.json', save_data)
     url = f"https://animestore.docomo.ne.jp/animestore/ci_pc?workId={work_id}"

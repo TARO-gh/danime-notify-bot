@@ -2,6 +2,7 @@ import asyncio
 import datetime as dt
 from discord import Embed
 import re
+import random
 import os
 from selenium import webdriver
 from selenium.webdriver.common.by import By
@@ -30,7 +31,9 @@ async def fetch_initial_data(work_id: int) -> dict:
     modal_body = wait.until(EC.presence_of_element_located(
     (By.CSS_SELECTOR, "span.note.schedule")
     ))
-    await asyncio.sleep(5)
+    random_sleep_time = random.uniform(1.5, 8.5) 
+    await asyncio.sleep(random_sleep_time)  # ランダムな待機時間を追加
+    
     html = driver.page_source
     soup = BeautifulSoup(html, 'html.parser')
     driver.quit()
@@ -60,6 +63,8 @@ async def fetch_initial_data(work_id: int) -> dict:
         pid = re.search(r"=(\d{8})", a["href"]).group(1)
         # リンクの次にある span を探す（エピソードタイトル）
         title_span = a.find_next("span", class_="ui-clamp webkit2LineClamp")
+        if not title_span:
+            continue
         title = title_span.text.strip()
         episodes.append((pid, title))
 
