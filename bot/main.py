@@ -3,6 +3,7 @@ from dotenv import load_dotenv, find_dotenv
 import discord
 from discord.ext import bridge
 import pkgutil, importlib
+import datetime as dt
 
 # 更新チェックループ
 from bot.utils.checker import start_update_loop
@@ -32,7 +33,7 @@ channel = None
 async def on_ready():
     global target_guild, channel
     # 起動ログ
-    print(f"Bot is ready. Guild/Channel: {TARGET_GUILD_ID}/{TARGET_CHANNEL_ID}")
+    print(f"Bot is ready. Guild/Channel: {TARGET_GUILD_ID}/{TARGET_CHANNEL_ID}, {dt.datetime.now()}")
 
     # 対象ギルドとチャンネルを設定
     for guild in bot.guilds:
