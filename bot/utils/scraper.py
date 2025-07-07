@@ -36,7 +36,6 @@ async def fetch_initial_data(work_id: int) -> dict:
     
     html = driver.page_source
     soup = BeautifulSoup(html, 'html.parser')
-    driver.quit()
 
     # スケジュール情報取得
     schedule_elem = soup.select_one(
@@ -80,14 +79,6 @@ async def fetch_initial_data(work_id: int) -> dict:
 
     # 最新話のサムネイルを取得
     url = f"https://animestore.docomo.ne.jp/animestore/ci_pc?workId={work_id}&partId={latest_part_id}"
-    options = webdriver.ChromeOptions()
-    options.add_argument('--headless')
-    options.add_argument('--no-sandbox')
-    options.add_argument('--disable-dev-shm-usage')
-    # バイナリの場所を明示
-    chrome_bin = os.getenv('CHROME_BIN', '/usr/bin/chromium')
-    options.binary_location = chrome_bin
-    driver = webdriver.Chrome(options=options)
     try:
         driver.get(url)
         wait = WebDriverWait(driver, timeout=10, poll_frequency=1.0)

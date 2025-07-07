@@ -3,6 +3,7 @@ services:
   danime:
     restart: unless-stopped
     build: .
+    init: true
     env_file:
       - .env
     container_name: 'danime'
