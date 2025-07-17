@@ -9,7 +9,7 @@ import datetime as dt
 import os
 from dotenv import load_dotenv
 import selenium
-
+import urllib3
 
 load_dotenv()  # 環境変数読み込み
 CHANNEL_ID = int(os.getenv("TARGET_CHANNEL_ID", 0))
@@ -58,7 +58,8 @@ async def check(bot):
             try:
                 # 最新データ取得
                 info = await fetch_initial_data(int(work_id))
-            except selenium.common.exceptions.TimeoutException as e:
+            except (selenium.common.exceptions.TimeoutException, urllib3.exceptions.ReadTimeoutError, ValueError) as e:
+                print(f"作品ID {work_id} の情報取得中にエラーが発生したため、スキップします。エラー: {e}")
                 continue
             
             # 取得できなかった場合はスキップ
