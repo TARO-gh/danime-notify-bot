@@ -54,6 +54,7 @@ async def add_to_watchlist(ctx, work_id: int):
         color=0xff4500
     )
     embed.set_image(url=info['work_thumbnail_url'])
+    embed.set_footer(text=f"追加者: {ctx.author.display_name}")
     await ctx.send(embed=embed)
 
 
