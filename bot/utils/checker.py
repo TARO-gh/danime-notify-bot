@@ -65,6 +65,9 @@ async def check(bot):
             # 取得できなかった場合はスキップ
             if not info:
                 print(f"作品ID {work_id} の情報が取得できませんでした。スキップします。")
+                # 2週間と1日以上更新がない場合は削除
+                if dt.datetime.now() - latest_update_date_dt > dt.timedelta(days=15):
+                    del_workid_list.append(work_id)
                 continue
 
             # 変化があれば通知
@@ -108,6 +111,15 @@ async def check(bot):
         # 自動削除リストに載った作品を削除
         if del_workid_list:
             print("自動削除対象:", del_workid_list)
+            del_data = [item for item in data if item['work_id'] in del_workid_list]
+            for item in del_data:
+                embed = Embed(
+                    title="以下のアニメは一定期間更新がなかったため、自動削除されました。",
+                    description=f"{item['work_title']} (ID: {item['work_id']})",
+                    color=0xff4500
+                )
+                embed.set_image(url=item['work_thumbnail_url'])
+                await channel.send(embed=embed)
             # save_info.json から削除
             data = [item for item in data if item['work_id'] not in del_workid_list]
 
