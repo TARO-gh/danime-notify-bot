@@ -40,16 +40,19 @@ async def fetch_initial_data(work_id: int) -> dict:
 
         # ── 動的要素待ち ──
         print(f"[待機] スケジュール要素レンダリング待ち")
-        wait = WebDriverWait(driver, timeout=10, poll_frequency=1.0)
-        wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "span.note.schedule")))
-        await asyncio.sleep(random.uniform(1.5, 8.5))
-        print(f"[取得] ページソース取得完了")
-
+        try:
+            wait = WebDriverWait(driver, timeout=10, poll_frequency=1.0)
+            wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "span.note.schedule")))
+            await asyncio.sleep(random.uniform(1.5, 3.0))
+            print(f"[取得] スケジュール要素あり")
+        except TimeoutException:
+            print(f"[情報] スケジュール要素なし（最終回などの想定パターン）。デフォルトで続行")  # ★ ここで握りつぶして続行
+        
+        # htmlを取得
         html = driver.page_source
         soup = BeautifulSoup(html, 'html.parser')
-
-        # ── スケジュール解析 ──
-        print(f"[解析] スケジュール情報をパース中")
+        
+        schedule_day, schedule_time = 7, "00:00"  # デフォルト値
         schedule_elem = soup.select_one(
             "body > div.pageWrapper > div > div.productWrapper.onlySpLayout > div > div > div > p > span.note.schedule"
         )
@@ -60,8 +63,6 @@ async def fetch_initial_data(work_id: int) -> dict:
             schedule_day = day_map.get(day_char, 7)
             nums = re.findall(r'\d+', text)
             schedule_time = f"{nums[0]}:{nums[1]}" if len(nums) >= 2 else "00:00"
-        else:
-            schedule_day, schedule_time = 7, "00:00"
 
         work_title = soup.title.get_text().split(" | ")[0].strip()
         print(f"[解析] タイトル: {work_title}, 放送曜日={schedule_day}, 時刻={schedule_time}")
