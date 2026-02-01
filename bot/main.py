@@ -11,6 +11,7 @@ from bot.utils.checker import start_update_loop
 # Discord UIビュー
 import bot.views.clear_view
 import bot.views.search_view
+import bot.views.lineup_view
 
 import bot.commands as commands_pkg
 
