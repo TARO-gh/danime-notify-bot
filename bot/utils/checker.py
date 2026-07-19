@@ -5,6 +5,7 @@ from discord import Embed
 from bot.utils.storage import _load_json, _save_json
 from bot.utils.storage import add_to_watchlist  # 必要に応じて
 from bot.utils.scraper import fetch_initial_data  # 必要に応じて
+from bot.utils.robots import RobotsDisallowed
 import datetime as dt
 import os
 from dotenv import load_dotenv
@@ -58,7 +59,9 @@ async def check(bot):
             try:
                 # 最新データ取得
                 info = await fetch_initial_data(int(work_id))
-            except (selenium.common.exceptions.TimeoutException, urllib3.exceptions.ReadTimeoutError, ValueError) as e:
+            except (selenium.common.exceptions.TimeoutException, urllib3.exceptions.ReadTimeoutError, ValueError, RobotsDisallowed) as e:
+                # RobotsDisallowed も含めることで、robots.txt禁止時に del_workid_list に
+                # 積まれず（＝15日自動削除の誤爆を防いで）安全にスキップする
                 print(f"作品ID {work_id} の情報取得中にエラーが発生したため、スキップします。エラー: {e}")
                 continue
             

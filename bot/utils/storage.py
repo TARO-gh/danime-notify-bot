@@ -39,7 +39,16 @@ async def add_to_watchlist(ctx, work_id: int):
         return
     # 初期情報取得（fetch_initial_dataは scraper.py で定義）
     from bot.utils.scraper import fetch_initial_data
-    info = await fetch_initial_data(work_id)
+    from bot.utils.robots import RobotsDisallowed
+    try:
+        info = await fetch_initial_data(work_id)
+    except RobotsDisallowed:
+        await ctx.send(embed=Embed(
+            title="追加できませんでした。",
+            description="robots.txt により許可されていないため取得できません。",
+            color=0xff4500
+        ), delete_after=60)
+        return
     if not info:
         await ctx.send(embed=Embed(
             title="追加できませんでした。",

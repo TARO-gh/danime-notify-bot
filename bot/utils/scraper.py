@@ -13,6 +13,7 @@ from bs4 import BeautifulSoup
 import urllib3
 from urllib.parse import urljoin
 from bot.utils.lineup import format_season_label
+from bot.utils.robots import robots_checker, RobotsDisallowed
 from typing import Optional, List, Tuple
 from contextlib import contextmanager
 
@@ -40,6 +41,10 @@ async def fetch_initial_data(work_id: int) -> dict:
     print("--------------------------")
     print(f"[開始] 作品ID {work_id} の更新確認を開始します")
     url = f"https://animestore.docomo.ne.jp/animestore/ci_pc?workId={work_id}"
+    # robots.txt で禁止されている場合は取得せず例外（呼び出し側で安全にスキップ）
+    if not robots_checker.can_fetch(url):
+        print(f"[robots] Disallow のため取得中止: {url}")
+        raise RobotsDisallowed(url)
     try:
         with _chrome_driver() as driver:
             # ── 初回ロード ──
@@ -229,7 +234,10 @@ def _build_lineup_urls(season: str, year: Optional[int], use_base_only: bool) ->
     ]
 
 
-async def _fetch_lineup_url(url: str) -> List[Tuple[str, str]]:
+async def _fetch_lineup_url(url: str) -> List[Tuple[str, str, bool]]:
+    if not robots_checker.can_fetch(url):
+        print(f"[robots] Disallow のため取得中止: {url}")
+        return []
     try:
         with _chrome_driver() as driver:
             print(f"[ロード] ラインナップページ取得→ {url}")
@@ -299,8 +307,11 @@ async def fetch_lineup_from_url(url: str) -> List[Tuple[str, str]]:
     return await _fetch_lineup_url(url)
 
 
-async def fetch_lineup_current_with_links(season: str) -> Tuple[List[Tuple[str, str]], List[Tuple[str, str]]]:
+async def fetch_lineup_current_with_links(season: str) -> Tuple[List[Tuple[str, str, bool]], List[Tuple[str, str]]]:
     url = f"https://animestore.docomo.ne.jp/animestore/CF/{season}"
+    if not robots_checker.can_fetch(url):
+        print(f"[robots] Disallow のため取得中止: {url}")
+        return [], []
     try:
         with _chrome_driver() as driver:
             print(f"[ロード] 今季ラインナップページ取得→ {url}")
