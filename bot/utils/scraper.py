@@ -11,6 +11,9 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException
 from bs4 import BeautifulSoup
 import urllib3
+from urllib.parse import urljoin
+from bot.utils.lineup import format_season_label
+from typing import Optional, List, Tuple
 
 
 async def fetch_initial_data(work_id: int) -> dict:
@@ -150,3 +153,194 @@ async def search_anime(query: str) -> (list):
     results = list(zip(data_workids,titles))
 
     return results
+
+
+def _extract_lineup_items(soup: BeautifulSoup) -> List[Tuple[str, str]]:
+    items: List[Tuple[str, str]] = []
+    seen: set[str] = set()
+
+    for a in soup.select('a[href*="ci_pc?workId="]'):
+        href = a.get('href')
+        if not href:
+            continue
+        match = re.search(r'workId=(\d+)', href)
+        if not match:
+            continue
+        work_id = match.group(1)
+        if work_id in seen:
+            continue
+        title_elem = a.select_one('h3') or a.select_one('p')
+        title = title_elem.get_text(strip=True) if title_elem else a.get_text(strip=True)
+        if not title:
+            continue
+        items.append((work_id, title))
+        seen.add(work_id)
+
+    if items:
+        return items
+
+    for div in soup.find_all('div', class_='itemModule list'):
+        work_id = div.get('data-workid')
+        if not work_id or work_id in seen:
+            continue
+        title_elem = div.select_one('span.ui-clamp.webkit2LineClamp') or div.select_one('span.ui-clamp')
+        title = title_elem.get_text(strip=True) if title_elem else None
+        if title:
+            items.append((work_id, title))
+            seen.add(work_id)
+
+    if items:
+        return items
+
+    for node in soup.select('[data-workid]'):
+        work_id = node.get('data-workid')
+        if not work_id or work_id in seen:
+            continue
+        title_elem = node.select_one('span.ui-clamp.webkit2LineClamp') or node.select_one('span.ui-clamp')
+        title = title_elem.get_text(strip=True) if title_elem else None
+        if title:
+            items.append((work_id, title))
+            seen.add(work_id)
+
+    if items:
+        return items
+
+    for a in soup.select('a[href*=\"workId=\"]'):
+        href = a.get('href')
+        if not href:
+            continue
+        match = re.search(r'workId=(\\d+)', href)
+        if not match:
+            continue
+        work_id = match.group(1)
+        if work_id in seen:
+            continue
+        title = a.get_text(strip=True)
+        if not title:
+            continue
+        items.append((work_id, title))
+        seen.add(work_id)
+
+    return items
+
+
+def _build_lineup_urls(season: str, year: Optional[int], use_base_only: bool) -> List[str]:
+    base = "https://animestore.docomo.ne.jp/animestore/CF/"
+    if use_base_only or year is None:
+        return [f"{base}{season}"]
+    return [
+        f"{base}{season}_{year}",
+        f"{base}{year}_{season}",
+        f"{base}{season}{year}",
+        f"{base}{season}-{year}",
+        f"{base}{year}{season}",
+    ]
+
+
+async def _fetch_lineup_url(url: str) -> List[Tuple[str, str]]:
+    options = webdriver.ChromeOptions()
+    options.add_argument('--headless=new')
+    options.add_argument('--no-sandbox')
+    options.add_argument('--disable-dev-shm-usage')
+    chrome_bin = os.getenv('CHROME_BIN', '/usr/bin/chromium')
+    options.binary_location = chrome_bin
+    driver = webdriver.Chrome(options=options)
+    try:
+        print(f"[ロード] ラインナップページ取得→ {url}")
+        driver.set_page_load_timeout(40)
+        driver.get(url)
+        try:
+            wait = WebDriverWait(driver, timeout=10, poll_frequency=1.0)
+            wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, 'a[href*="ci_pc?workId="]')))
+            await asyncio.sleep(random.uniform(1.5, 3.0))
+            print("[取得] ラインナップ要素あり")
+        except TimeoutException:
+            print("[情報] ラインナップ要素待機タイムアウト")
+            pass
+        soup = BeautifulSoup(driver.page_source, 'html.parser')
+        items = _extract_lineup_items(soup)
+        print(f"[解析] ラインナップ件数: {len(items)}")
+        return items
+    except (TimeoutException, urllib3.exceptions.ReadTimeoutError):
+        return []
+    finally:
+        driver.quit()
+
+
+async def fetch_lineup(season: str, year: Optional[int] = None, use_base_only: bool = False) -> List[Tuple[str, str]]:
+    urls = _build_lineup_urls(season, year, use_base_only)
+    for url in urls:
+        items = await _fetch_lineup_url(url)
+        if items:
+            return items
+    return []
+
+
+def _extract_lineup_links(soup: BeautifulSoup, base_url: str) -> List[Tuple[str, str]]:
+    links: List[Tuple[str, str]] = []
+    seen: set[str] = set()
+    season_pattern = re.compile(r'/(?:animestore/)?CF/([^/?#]+)')
+    token_pattern = re.compile(r'(winter|spring|summer|fall).*?(20\\d{2})|(20\\d{2}).*?(winter|spring|summer|fall)')
+    allow_token = re.compile(
+        r'^(winter|spring|summer|fall|shinban-|tv-rendou-haishin-list-past-)'
+    )
+
+    for a in soup.select('a[href]'):
+        href = a.get('href')
+        if not href:
+            continue
+        if not allow_token.search(href):
+            continue
+        full_url = urljoin(base_url, f"/animestore/CF/{href}")
+        if full_url in seen:
+            continue
+        seen.add(full_url)
+
+        label = a.get_text(strip=True)
+        if not label:
+            token_match = token_pattern.search(href)
+            if token_match:
+                season = token_match.group(1) or token_match.group(4)
+                year = token_match.group(2) or token_match.group(3)
+                if season and year:
+                    label = format_season_label(int(year), season)
+        if not label:
+            label = "ラインナップ"
+        links.append((label, full_url))
+
+    return links
+
+
+async def fetch_lineup_from_url(url: str) -> List[Tuple[str, str]]:
+    return await _fetch_lineup_url(url)
+
+
+async def fetch_lineup_current_with_links(season: str) -> Tuple[List[Tuple[str, str]], List[Tuple[str, str]]]:
+    url = f"https://animestore.docomo.ne.jp/animestore/CF/{season}"
+    options = webdriver.ChromeOptions()
+    options.add_argument('--headless=new')
+    options.add_argument('--no-sandbox')
+    options.add_argument('--disable-dev-shm-usage')
+    chrome_bin = os.getenv('CHROME_BIN', '/usr/bin/chromium')
+    options.binary_location = chrome_bin
+    driver = webdriver.Chrome(options=options)
+    try:
+        print(f"[ロード] 今季ラインナップページ取得→ {url}")
+        driver.set_page_load_timeout(40)
+        driver.get(url)
+        try:
+            wait = WebDriverWait(driver, timeout=10, poll_frequency=1.0)
+            wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, 'a[href*="ci_pc?workId="]')))
+            await asyncio.sleep(random.uniform(1.5, 3.0))
+            print("[取得] ラインナップ要素あり")
+        except TimeoutException:
+            print("[情報] ラインナップ要素待機タイムアウト")
+        soup = BeautifulSoup(driver.page_source, 'html.parser')
+        items = _extract_lineup_items(soup)
+        links = _extract_lineup_links(soup, url)
+        print(f"[解析] ラインナップ件数: {len(items)}, リンク件数: {len(links)}")
+        return items, links
+    except (TimeoutException, urllib3.exceptions.ReadTimeoutError):
+        return [], []
+    finally:
+        driver.quit()
