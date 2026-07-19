@@ -1,4 +1,5 @@
 import discord
+from typing import Optional
 
 def make_schedule_embed(data: list) -> discord.Embed:
     """
@@ -28,7 +29,7 @@ def make_schedule_embed(data: list) -> discord.Embed:
     return embed
 
 
-def make_lineup_embed(season_label: str, items: list[tuple[str, str]]) -> discord.Embed:
+def make_lineup_embed(season_label: str, items: list[tuple[str, str]], url: Optional[str] = None) -> discord.Embed:
     max_items = 60
     lines = []
     for idx, (_, title) in enumerate(items[:max_items]):
@@ -38,9 +39,15 @@ def make_lineup_embed(season_label: str, items: list[tuple[str, str]]) -> discor
     if len(description) > 3800:
         description = description[:3790] + "\n..."
 
+    if not description:
+        description = "該当作品が見つかりませんでした。"
+
+    if url:
+        description = f"{description}\n\n[dアニメストアでラインナップを見る]({url})"
+
     embed = discord.Embed(
         title=f"{season_label} アニメラインナップ",
-        description=description if description else "該当作品が見つかりませんでした。",
+        description=description,
         color=0xff4500,
     )
     embed.set_footer(text=f"全{len(items)}件 / 表示{min(len(items), max_items)}件")

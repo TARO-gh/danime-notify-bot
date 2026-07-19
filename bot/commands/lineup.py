@@ -28,8 +28,8 @@ class LineupCog(commands.Cog):
             return
 
         season_label = format_season_label(year, season)
-        embed = make_lineup_embed(season_label, items)
         base_url = f"https://animestore.docomo.ne.jp/animestore/CF/{season}"
+        embed = make_lineup_embed(season_label, items, base_url)
         if links:
             existing = {url for _, url in links}
             if base_url not in existing:

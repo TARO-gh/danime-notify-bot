@@ -64,7 +64,7 @@ class LineupView(discord.ui.View):
             return
 
         selected_label = next((label for label, link in self.links if link == url), "ラインナップ")
-        embed = make_lineup_embed(selected_label, items)
+        embed = make_lineup_embed(selected_label, items, url)
         self.current_url = url
         self._build_select()
         await interaction.message.edit(embed=embed, view=self)
