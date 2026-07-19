@@ -10,13 +10,10 @@ from bot.utils.embeds import (
     make_manual_check_done_embed,
 )
 import datetime as dt
-import os
-from dotenv import load_dotenv
 import selenium
 import urllib3
+from bot.config import TARGET_CHANNEL_ID as CHANNEL_ID
 
-load_dotenv()  # 環境変数読み込み
-CHANNEL_ID = int(os.getenv("TARGET_CHANNEL_ID", 0))
 updating = False
 
 last_check_dt = dt.datetime(2000,1,1,0,0,0)
