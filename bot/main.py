@@ -1,9 +1,10 @@
-import os
-from dotenv import load_dotenv, find_dotenv
 import discord
 from discord.ext import bridge
 import pkgutil, importlib
 import datetime as dt
+
+# 設定値
+from bot.config import TOKEN, TARGET_GUILD_ID, TARGET_CHANNEL_ID
 
 # 更新チェックループ
 from bot.utils.checker import start_update_loop
@@ -14,12 +15,6 @@ import bot.views.search_view
 import bot.views.lineup_view
 
 import bot.commands as commands_pkg
-
-# 環境変数読み込み
-load_dotenv(find_dotenv())
-TOKEN = os.getenv("TOKEN")
-TARGET_GUILD_ID = int(os.getenv("TARGET_GUILD_ID", 0))
-TARGET_CHANNEL_ID = int(os.getenv("TARGET_CHANNEL_ID", 0))
 
 # Botの初期化
 bot = bridge.Bot(

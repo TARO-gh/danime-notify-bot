@@ -3,7 +3,6 @@ import datetime as dt
 from discord import Embed
 import re
 import random
-import os
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
@@ -14,6 +13,7 @@ import urllib3
 from urllib.parse import urljoin
 from bot.utils.lineup import format_season_label
 from bot.utils.robots import robots_checker, RobotsDisallowed
+from bot.config import CHROME_BIN
 from typing import Optional, List, Tuple
 from contextlib import contextmanager
 
@@ -26,7 +26,7 @@ def _chrome_driver():
     options.add_argument('--no-sandbox')
     options.add_argument('--disable-dev-shm-usage')
     # バイナリの場所を明示（CHROME_BIN 未設定時は標準パス）
-    options.binary_location = os.getenv('CHROME_BIN', '/usr/bin/chromium')
+    options.binary_location = CHROME_BIN
     driver = webdriver.Chrome(options=options)
     try:
         yield driver
