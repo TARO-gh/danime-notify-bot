@@ -3,4 +3,3 @@ chromedriver
 opt/save_info.json
 **/__pycache__/
 .mcp.json
-plan/
