@@ -42,7 +42,9 @@ async def add_to_watchlist(ctx, work_id: int):
     info = await fetch_initial_data(work_id)
     if not info:
         await ctx.send(embed=Embed(
-            title="アニメタイトルの追加に失敗しました。", color=0xff4500
+            title="追加できませんでした。",
+            description="配信開始前か、作品IDが存在しません。",
+            color=0xff4500
         ), delete_after=60)
         return
     save_data.append(info)
