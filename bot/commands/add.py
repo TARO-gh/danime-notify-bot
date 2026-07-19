@@ -24,8 +24,10 @@ class AddCog(commands.Cog):
             await add_to_watchlist(ctx, workid)
         except selenium.common.exceptions.TimeoutException as e:
             await ctx.send(embed=Embed(
-            title="作品IDが存在しません。", color=0xff4500
-        ), delete_after=60)
+                title="追加できませんでした。",
+                description="配信開始前か、作品IDが存在しません。",
+                color=0xff4500
+            ), delete_after=60)
         return
         
 

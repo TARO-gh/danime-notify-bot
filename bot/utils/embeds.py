@@ -29,11 +29,14 @@ def make_schedule_embed(data: list) -> discord.Embed:
     return embed
 
 
-def make_lineup_embed(season_label: str, items: list[tuple[str, str]], url: Optional[str] = None) -> discord.Embed:
+def make_lineup_embed(season_label: str, items: list[tuple[str, str, bool]], url: Optional[str] = None) -> discord.Embed:
     max_items = 60
     lines = []
-    for idx, (_, title) in enumerate(items[:max_items]):
-        lines.append(f"{idx+1}. {title}")
+    for idx, item in enumerate(items[:max_items]):
+        title = item[1]
+        available = item[2] if len(item) > 2 else True
+        mark = "" if available else "（配信予定）"
+        lines.append(f"{idx+1}. {title}{mark}")
 
     description = "\n".join(lines)
     if len(description) > 3800:

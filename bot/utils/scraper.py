@@ -133,32 +133,15 @@ async def fetch_initial_data(work_id: int) -> dict:
 
 
 
-async def search_anime(query: str) -> (list):
+def _extract_lineup_items(soup: BeautifulSoup) -> List[Tuple[str, str, bool]]:
     """
-    アニメを検索し、Embedと[(work_id, title), ...]を返す
+    ラインナップから (work_id, title, available) を抽出する。
+    available=False は disableLink（配信リンク未活性＝配信開始前）の作品。
     """
-    url = f"https://animestore.docomo.ne.jp/animestore/sch_pc?searchKey={query}&vodTypeList=svod_tvod&sortKey=4"
-    with _chrome_driver() as driver:
-        driver.get(url)
-        await asyncio.sleep(5)
-        soup = BeautifulSoup(driver.page_source, 'html.parser')
-
-    # data-workidを持つdivタグを探す
-    divs = soup.find_all('div', class_='itemModule list')
-    titles = soup.find_all('span', class_='ui-clamp webkit2LineClamp')
-
-    # data-workid属性の値を取得
-    data_workids = [div['data-workid'] for div in divs if 'data-workid' in div.attrs]
-
-    results = list(zip(data_workids,titles))
-
-    return results
-
-
-def _extract_lineup_items(soup: BeautifulSoup) -> List[Tuple[str, str]]:
-    items: List[Tuple[str, str]] = []
+    items: List[Tuple[str, str, bool]] = []
     seen: set[str] = set()
 
+    # 第1戦略: ci_pc リンクから抽出（リンクがある＝配信中）
     for a in soup.select('a[href*="ci_pc?workId="]'):
         href = a.get('href')
         if not href:
@@ -173,25 +156,34 @@ def _extract_lineup_items(soup: BeautifulSoup) -> List[Tuple[str, str]]:
         title = title_elem.get_text(strip=True) if title_elem else a.get_text(strip=True)
         if not title:
             continue
-        items.append((work_id, title))
+        items.append((work_id, title, True))
+        seen.add(work_id)
+
+    # 第2戦略: itemModule タイルで取りこぼしを補完（常に実行）。
+    #   disableLink（配信開始前）の作品は ci_pc リンクを持たず第1戦略で漏れるため、
+    #   data-workid から拾い、available=False として区別する。
+    #   ※ find_all(class_='itemModule list') はスペース入り文字列だと完全一致となり
+    #     class="itemModule list disableLink" にマッチしないため、CSSセレクタで部分集合マッチする。
+    for div in soup.select('div.itemModule.list'):
+        work_id = div.get('data-workid')
+        if not work_id or work_id in seen:
+            continue
+        title_elem = (
+            div.select_one('h3')
+            or div.select_one('p')
+            or div.select_one('span.ui-clamp.webkit2LineClamp')
+        )
+        title = title_elem.get_text(strip=True) if title_elem else None
+        if not title:
+            continue
+        available = 'disableLink' not in div.get('class', [])
+        items.append((work_id, title, available))
         seen.add(work_id)
 
     if items:
         return items
 
-    for div in soup.find_all('div', class_='itemModule list'):
-        work_id = div.get('data-workid')
-        if not work_id or work_id in seen:
-            continue
-        title_elem = div.select_one('span.ui-clamp.webkit2LineClamp') or div.select_one('span.ui-clamp')
-        title = title_elem.get_text(strip=True) if title_elem else None
-        if title:
-            items.append((work_id, title))
-            seen.add(work_id)
-
-    if items:
-        return items
-
+    # フォールバック: itemModule 構造が無いページ向け
     for node in soup.select('[data-workid]'):
         work_id = node.get('data-workid')
         if not work_id or work_id in seen:
@@ -199,7 +191,7 @@ def _extract_lineup_items(soup: BeautifulSoup) -> List[Tuple[str, str]]:
         title_elem = node.select_one('span.ui-clamp.webkit2LineClamp') or node.select_one('span.ui-clamp')
         title = title_elem.get_text(strip=True) if title_elem else None
         if title:
-            items.append((work_id, title))
+            items.append((work_id, title, True))
             seen.add(work_id)
 
     if items:
@@ -218,7 +210,7 @@ def _extract_lineup_items(soup: BeautifulSoup) -> List[Tuple[str, str]]:
         title = a.get_text(strip=True)
         if not title:
             continue
-        items.append((work_id, title))
+        items.append((work_id, title, True))
         seen.add(work_id)
 
     return items
