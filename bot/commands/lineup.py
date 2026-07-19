@@ -1,9 +1,8 @@
 from discord.ext import bridge, commands
 from bot.utils.lineup import get_current_season_and_year, format_season_label
 from bot.utils.scraper import fetch_lineup_current_with_links
-from bot.utils.embeds import make_lineup_embed
+from bot.utils.embeds import make_lineup_embed, make_lineup_fetch_failed_embed
 from bot.views.lineup_view import LineupView
-import discord
 
 
 class LineupCog(commands.Cog):
@@ -19,12 +18,7 @@ class LineupCog(commands.Cog):
         season, year = get_current_season_and_year()
         items, links = await fetch_lineup_current_with_links(season)
         if not items:
-            embed = discord.Embed(
-                title="ラインナップの取得に失敗しました。",
-                description="時間を置いて再試行してください。",
-                color=0xff4500,
-            )
-            await ctx.channel.send(embed=embed, delete_after=60)
+            await ctx.channel.send(embed=make_lineup_fetch_failed_embed(), delete_after=60)
             return
 
         season_label = format_season_label(year, season)

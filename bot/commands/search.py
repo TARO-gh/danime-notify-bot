@@ -1,8 +1,8 @@
 from discord.commands import Option
 from discord.ext import bridge, commands
-from discord import Embed
 from bot.utils.lineup import get_current_season_and_year, format_season_label
 from bot.utils.scraper import fetch_lineup_current_with_links
+from bot.utils.embeds import make_search_results_embed, make_search_no_result_embed
 from bot.views.search_view import SearchView
 
 # 表示・選択の最大件数（Discordのセレクトは最大25件）
@@ -33,27 +33,10 @@ class SearchCog(commands.Cog):
         results = [(work_id, title, available) for work_id, title, available in items if q in title.lower()]
 
         if not results:
-            embed = Embed(
-                title=f"'{query}' 検索結果",
-                description=(
-                    f"{season_label}のラインナップ内に該当する作品が見つかりませんでした。\n"
-                    "一覧にない作品は `/add <作品ID>` で追加できます。"
-                ),
-                color=0xff4500
-            )
-            await ctx.channel.send(embed=embed, delete_after=60)
+            await ctx.channel.send(embed=make_search_no_result_embed(query, season_label), delete_after=60)
             return
 
-        text = "".join(
-            f"{idx+1}. {title}{'' if available else '（配信予定）'}\n"
-            for idx, (work_id, title, available) in enumerate(results[:MAX_RESULTS])
-        )
-        embed = Embed(
-            title=f"'{query}' 検索結果",
-            description=text,
-            color=0xff4500
-        )
-        embed.set_footer(text=f"{season_label}ラインナップ内 / 該当{len(results)}件")
+        embed = make_search_results_embed(query, season_label, results, MAX_RESULTS)
         view = SearchView(ctx, results[:MAX_RESULTS])
         await ctx.channel.send(embed=embed, view=view, delete_after=60)
 

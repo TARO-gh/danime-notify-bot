@@ -1,6 +1,7 @@
 import discord
 from bot.utils.storage import add_to_watchlist
-import selenium
+from bot.utils.embeds import make_add_result_embed, make_search_unavailable_embed
+
 
 class SearchView(discord.ui.View):
     """
@@ -35,26 +36,13 @@ class SearchView(discord.ui.View):
         work_id_str = self.select.values[0]
         # 配信開始前の作品は追加せず、その旨を通知
         if not self.availability.get(work_id_str, True):
-            await interaction.channel.send(
-                embed=discord.Embed(
-                    title="まだ追加できません。",
-                    description="この作品は配信開始前です。配信開始後に追加してください。",
-                    color=0xff4500
-                ),
-                delete_after=60
-            )
+            await interaction.channel.send(embed=make_search_unavailable_embed(), delete_after=60)
             self.stop()
             return
-        work_id = int(work_id_str)
-        try:
-            await add_to_watchlist(self.ctx, work_id)
-        except selenium.common.exceptions.TimeoutException:
-            await interaction.channel.send(
-                embed=discord.Embed(
-                    title="エラーが発生しました。",
-                    color=0xff4500
-                ),
-                delete_after=60
-            )
-            return
+        status, info = await add_to_watchlist(int(work_id_str))
+        embed = make_add_result_embed(status, info, self.ctx.author.display_name)
+        if status == "ok":
+            await interaction.channel.send(embed=embed)
+        else:
+            await interaction.channel.send(embed=embed, delete_after=60)
         self.stop()
