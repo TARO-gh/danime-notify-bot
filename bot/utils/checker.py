@@ -1,11 +1,14 @@
 import asyncio
 import discord
 from discord.ext import tasks
-from discord import Embed
 from bot.utils.storage import _load_json, _save_json
-from bot.utils.storage import add_to_watchlist  # 必要に応じて
 from bot.utils.scraper import fetch_initial_data  # 必要に応じて
 from bot.utils.robots import RobotsDisallowed
+from bot.utils.embeds import (
+    make_update_notification_embed,
+    make_auto_delete_embed,
+    make_manual_check_done_embed,
+)
 import datetime as dt
 import os
 from dotenv import load_dotenv
@@ -30,10 +33,10 @@ def start_update_loop(bot):
 
     update_loop.start()
 
-async def manual_check_updates(bot) -> Embed:
+async def manual_check_updates(bot):
     # 手動更新確認
     await check(bot)
-    return Embed(title="更新確認処理が終了しました。", description="", color=0xff4500)
+    return make_manual_check_done_embed()
 
 async def check(bot):
     """
@@ -76,14 +79,7 @@ async def check(bot):
             # 変化があれば通知
             if info['latest_part_id'] != item.get('latest_part_id'):
                 item.update(info)
-                url = f"https://animestore.docomo.ne.jp/animestore/ci_pc?workId={work_id}&partId={info['latest_part_id']}"
-                embed = Embed(
-                    title="以下のアニメが更新されました。",
-                    description=f"{info['work_title']}\n第{int(info['latest_part_id'][-3:])}話: {info['latest_part_title']}\n{url}",
-                    color=0xff4500
-                )
-                embed.set_image(url=info['latest_part_thumbnail_url'])
-                await channel.send(embed=embed)
+                await channel.send(embed=make_update_notification_embed(info))
             else:
                 # 2週間と1日以上更新がない場合は削除
                 if dt.datetime.now() - latest_update_date_dt > dt.timedelta(days=15):
@@ -116,13 +112,7 @@ async def check(bot):
             print("自動削除対象:", del_workid_list)
             del_data = [item for item in data if item['work_id'] in del_workid_list]
             for item in del_data:
-                embed = Embed(
-                    title="以下のアニメは一定期間更新がなかったため、自動削除されました。",
-                    description=f"{item['work_title']} (ID: {item['work_id']})",
-                    color=0xff4500
-                )
-                embed.set_image(url=item['work_thumbnail_url'])
-                await channel.send(embed=embed)
+                await channel.send(embed=make_auto_delete_embed(item))
             # save_info.json から削除
             data = [item for item in data if item['work_id'] not in del_workid_list]
 

@@ -1,6 +1,6 @@
 import discord
 from bot.utils.scraper import fetch_lineup_from_url
-from bot.utils.embeds import make_lineup_embed
+from bot.utils.embeds import make_lineup_embed, make_lineup_fetch_failed_embed
 
 
 class LineupView(discord.ui.View):
@@ -55,12 +55,7 @@ class LineupView(discord.ui.View):
         url = self.select.values[0]
         items = await fetch_lineup_from_url(url)
         if not items:
-            embed = discord.Embed(
-                title="ラインナップの取得に失敗しました。",
-                description="時間を置いて再試行してください。",
-                color=0xff4500,
-            )
-            await interaction.message.edit(embed=embed, view=self)
+            await interaction.message.edit(embed=make_lineup_fetch_failed_embed(), view=self)
             return
 
         selected_label = next((label for label, link in self.links if link == url), "ラインナップ")

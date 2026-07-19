@@ -1,6 +1,7 @@
 from discord.ext import bridge, commands
-from discord import Embed
+from bot.utils.embeds import make_clear_confirm_embed
 from bot.views.clear_view import ClearView
+
 
 class ClearCog(commands.Cog):
     """/clear コマンドをまとめた Cog"""
@@ -9,7 +10,7 @@ class ClearCog(commands.Cog):
         self.bot = bot
 
     @bridge.bridge_command(
-        name="clear", 
+        name="clear",
         description="通知するアニメタイトルを全て削除します。"
     )
     async def clear_command(
@@ -18,14 +19,8 @@ class ClearCog(commands.Cog):
         ):
         """全件削除の確認UIを表示"""
         await ctx.respond("コマンドを確認しました", delete_after=1)
-        embed = Embed(
-            title="通知するアニメタイトルを全て削除します。",
-            description="本当によろしいですか？",
-            color=0xff4500
-        )
-        await ctx.channel.send(embed=embed, view=ClearView(), delete_after=60)
+        await ctx.channel.send(embed=make_clear_confirm_embed(), view=ClearView(), delete_after=60)
 
 
 def setup(bot: bridge.Bot):
     bot.add_cog(ClearCog(bot))
-
