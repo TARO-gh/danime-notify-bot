@@ -4,6 +4,9 @@ import json
 # opt ディレクトリへのパス設定
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'opt'))
 
+# watchlist の保存ファイル名（storage 内部に閉じる）
+WATCHLIST_FILE = 'save_info.json'
+
 
 def _load_json(filename: str):
     """
@@ -25,6 +28,11 @@ def _save_json(filename: str, data):
         json.dump(data, f, ensure_ascii=False, indent=2)
 
 
+def save_watchlist(data):
+    """watchlist を保存する（公開API）。"""
+    _save_json(WATCHLIST_FILE, data)
+
+
 async def add_to_watchlist(work_id: int):
     """
     watchlist にアニメを追加する。表示は行わず、結果ステータスを返す。
@@ -34,7 +42,7 @@ async def add_to_watchlist(work_id: int):
       - ("failed", None)    : 取得失敗（配信開始前 or ID不正）
       - ("ok", info)        : 追加成功
     """
-    save_data = _load_json('save_info.json')
+    save_data = _load_json(WATCHLIST_FILE)
     # 重複チェック
     if any(item['work_id'] == str(work_id) for item in save_data):
         return ("duplicate", None)
@@ -48,7 +56,7 @@ async def add_to_watchlist(work_id: int):
     if not info:
         return ("failed", None)
     save_data.append(info)
-    _save_json('save_info.json', save_data)
+    save_watchlist(save_data)
     return ("ok", info)
 
 
@@ -59,12 +67,12 @@ async def remove_from_watchlist(work_id: int):
       - ("not_found", None) : 未登録
       - ("ok", deleted)     : 削除成功
     """
-    save_data = _load_json('save_info.json')
+    save_data = _load_json(WATCHLIST_FILE)
     new_list = [item for item in save_data if item['work_id'] != str(work_id)]
     if len(new_list) == len(save_data):
         return ("not_found", None)
     deleted = next(item for item in save_data if item['work_id'] == str(work_id))
-    _save_json('save_info.json', new_list)
+    save_watchlist(new_list)
     return ("ok", deleted)
 
 
@@ -72,13 +80,12 @@ async def clear_watchlist():
     """
     watchlistを全てクリアする
     """
-    _save_json('save_info.json', [])
+    save_watchlist([])
     return
 
 
 async def load_watchlist():
     """
-    watchlistをロードして返す
+    watchlistをロードして返す（公開API）。
     """
-    save_data = _load_json('save_info.json')
-    return save_data if save_data else []
+    return _load_json(WATCHLIST_FILE)
