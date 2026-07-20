@@ -9,6 +9,9 @@ from bot.config import TOKEN, TARGET_GUILD_ID, TARGET_CHANNEL_ID
 # 更新チェックループ
 from bot.utils.checker import start_update_loop
 
+# 手動登録タイトルの通知ループ
+from bot.utils.manual import start_manual_notify_loop
+
 # Discord UIビュー
 import bot.views.clear_view
 import bot.views.search_view
@@ -40,6 +43,9 @@ async def on_ready():
 
     # 更新チェックループ開始
     start_update_loop(bot)
+
+    # 手動登録タイトルの通知ループ開始
+    start_manual_notify_loop(bot)
 
     # プレゼンス設定
     await bot.change_presence(

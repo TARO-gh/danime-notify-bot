@@ -1,6 +1,7 @@
 .env
 chromedriver
 opt/save_info.json
+opt/manual_info.json
 **/__pycache__/
 .mcp.json
 .playwright-mcp/
