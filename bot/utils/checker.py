@@ -173,7 +173,17 @@ class UpdateChecker:
 # --- 既存インターフェース（main.py / update.py はこれを使い続ける） ---
 
 def start_update_loop(bot):
-    """更新確認ループを生成・開始し、インスタンスを bot に保持させる。"""
+    """
+    更新確認ループを生成・開始し、インスタンスを bot に保持させる。
+
+    on_ready は再接続のたびに再発火するため、二重起動を防ぐ。
+    ガード状態（_last_check / _running）がインスタンス単位になった結果、
+    複数ループが並走すると同じ通知が重複送信される（過去の不具合）ため、
+    既に起動済みなら何もしない。
+    """
+    if getattr(bot, "update_checker", None) is not None:
+        print("更新確認ループは既に起動済みのため、再起動をスキップします。")
+        return
     checker = UpdateChecker(bot)
     bot.update_checker = checker
     checker.start()

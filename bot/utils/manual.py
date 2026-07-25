@@ -195,7 +195,16 @@ class ManualNotifier:
 
 
 def start_manual_notify_loop(bot):
-    """通知ループを生成・開始し、インスタンスを bot に保持させる。"""
+    """
+    通知ループを生成・開始し、インスタンスを bot に保持させる。
+
+    on_ready は再接続のたびに再発火するため、二重起動を防ぐ。
+    複数ループが並走すると同じ通知が重複送信されるため、既に起動済みなら
+    何もしない（checker.start_update_loop と同じ理由）。
+    """
+    if getattr(bot, "manual_notifier", None) is not None:
+        print("手動通知ループは既に起動済みのため、再起動をスキップします。")
+        return
     notifier = ManualNotifier(bot)
     bot.manual_notifier = notifier
     notifier.start()
