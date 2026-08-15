@@ -1,9 +1,11 @@
 import os
 import json
-from discord import Embed
 
 # opt ディレクトリへのパス設定
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'opt'))
+
+# watchlist の保存ファイル名（storage 内部に閉じる）
+WATCHLIST_FILE = 'save_info.json'
 
 
 def _load_json(filename: str):
@@ -26,69 +28,64 @@ def _save_json(filename: str, data):
         json.dump(data, f, ensure_ascii=False, indent=2)
 
 
-async def add_to_watchlist(ctx, work_id: int):
+def save_watchlist(data):
+    """watchlist を保存する（公開API）。"""
+    _save_json(WATCHLIST_FILE, data)
+
+
+async def add_to_watchlist(work_id: int):
     """
-    watchlistにアニメを追加し、結果をDiscordに通知する
+    watchlist にアニメを追加する。表示は行わず、結果ステータスを返す。
+    戻り値: (status, info)
+      - ("duplicate", None) : 既に登録済み
+      - ("robots", None)    : robots.txt により取得不可
+      - ("failed", None)    : 取得失敗（配信開始前 or ID不正）
+      - ("ok", info)        : 追加成功
     """
-    save_data = _load_json('save_info.json')
+    save_data = _load_json(WATCHLIST_FILE)
     # 重複チェック
     if any(item['work_id'] == str(work_id) for item in save_data):
-        await ctx.send(embed=Embed(
-            title="既に追加されています。", color=0xff4500
-        ), delete_after=60)
-        return
+        return ("duplicate", None)
     # 初期情報取得（fetch_initial_dataは scraper.py で定義）
     from bot.utils.scraper import fetch_initial_data
-    info = await fetch_initial_data(work_id)
+    from bot.utils.robots import RobotsDisallowed
+    try:
+        info = await fetch_initial_data(work_id)
+    except RobotsDisallowed:
+        return ("robots", None)
     if not info:
-        await ctx.send(embed=Embed(
-            title="アニメタイトルの追加に失敗しました。", color=0xff4500
-        ), delete_after=60)
-        return
+        return ("failed", None)
     save_data.append(info)
-    _save_json('save_info.json', save_data)
-    url = f"https://animestore.docomo.ne.jp/animestore/ci_pc?workId={work_id}"
-    embed = Embed(
-        title="通知するアニメタイトルを追加しました。",
-        description=f"{info['work_title']} (ID: {info['work_id']})\n{url}",
-        color=0xff4500
-    )
-    embed.set_image(url=info['work_thumbnail_url'])
-    embed.set_footer(text=f"追加者: {ctx.author.display_name}")
-    await ctx.send(embed=embed)
+    save_watchlist(save_data)
+    return ("ok", info)
 
 
-async def remove_from_watchlist(ctx, work_id: int):
+async def remove_from_watchlist(work_id: int):
     """
-    watchlistからアニメを削除し、結果をDiscordに通知する
+    watchlist からアニメを削除する。表示は行わず、結果ステータスを返す。
+    戻り値: (status, deleted)
+      - ("not_found", None) : 未登録
+      - ("ok", deleted)     : 削除成功
     """
-    save_data = _load_json('save_info.json')
+    save_data = _load_json(WATCHLIST_FILE)
     new_list = [item for item in save_data if item['work_id'] != str(work_id)]
     if len(new_list) == len(save_data):
-        await ctx.send(embed=Embed(
-            title="作品IDが存在しないか、追加されていません。", color=0xff4500
-        ), delete_after=60)
-        return
-    # 削除アイテムの情報取得
+        return ("not_found", None)
     deleted = next(item for item in save_data if item['work_id'] == str(work_id))
-    _save_json('save_info.json', new_list)
-    embed = Embed(
-        title="通知するアニメタイトルを削除しました。",
-        description=f"{deleted['work_title']} (ID: {deleted['work_id']})",
-        color=0xff4500
-    )
-    await ctx.send(embed=embed, delete_after=60)
+    save_watchlist(new_list)
+    return ("ok", deleted)
+
 
 async def clear_watchlist():
     """
-    watchlistを全てクリアし、結果をDiscordに通知する
+    watchlistを全てクリアする
     """
-    _save_json('save_info.json', [])
+    save_watchlist([])
     return
+
 
 async def load_watchlist():
     """
-    watchlistをロードして返す
+    watchlistをロードして返す（公開API）。
     """
-    save_data = _load_json('save_info.json')
-    return save_data if save_data else []
+    return _load_json(WATCHLIST_FILE)

@@ -1,5 +1,7 @@
 import discord
 from bot.utils.storage import clear_watchlist
+from bot.utils.embeds import make_clear_done_embed, make_clear_cancel_embed
+
 
 class ClearView(discord.ui.View):
     """
@@ -16,20 +18,12 @@ class ClearView(discord.ui.View):
         await interaction.message.delete()
         await clear_watchlist()
         print("全削除処理を正しく終了しました。")
-        embed = discord.Embed(
-            title="通知するアニメタイトルを全て削除しました。",
-            color=0xff4500
-        )
-        await interaction.channel.send(embed=embed, delete_after=60)
+        await interaction.channel.send(embed=make_clear_done_embed(), delete_after=60)
         self.stop()
 
     @discord.ui.button(label="キャンセル", style=discord.ButtonStyle.secondary)
     async def cancel(self, button: discord.ui.Button, interaction: discord.Interaction):
         await interaction.response.defer()
         await interaction.message.delete()
-        embed = discord.Embed(
-            title="キャンセルしました。",
-            color=0xff4500
-        )
-        await interaction.channel.send(embed=embed, delete_after=60)
+        await interaction.channel.send(embed=make_clear_cancel_embed(), delete_after=60)
         self.stop()
